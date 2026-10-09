@@ -1,0 +1,9 @@
+{
+  "name": "My next chapter",
+  "interests": ["AI + finance", "AI + healthcare"],
+  "roles": ["Software Engineer", "AI Engineer"],
+  "locations": [],
+  "companyStage": "",
+  "notes": "Prioritize companies applying AI to real business problems.",
+  "companiesPerCategory": 100
+}
