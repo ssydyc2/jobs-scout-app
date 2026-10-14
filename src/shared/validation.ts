@@ -29,9 +29,9 @@ export function parseConfig(raw: string): ScoutConfig {
   catch { throw new Error('The preference file is not valid JSON. Check commas, quotes, and brackets.') }
   const config = record(value)
   // Credentials and provider settings never belong in a preference document.
-  const allowed = new Set(['name', 'interests', 'roles', 'locations', 'companyStage', 'notes', 'companiesPerCategory', 'maxResults'])
+  const allowed = new Set(['name', 'interests', 'roles', 'locations', 'jobInterests', 'companyStage', 'notes', 'companiesPerCategory', 'maxResults'])
   if (Object.keys(config).some((key) => !allowed.has(key))) {
-    throw new Error('Unknown preference field. Supported fields: name, interests, roles, locations, companyStage, notes, companiesPerCategory. Enter your API key when searching.')
+    throw new Error('Unknown preference field. Supported fields: name, interests, roles, locations, jobInterests, notes, companiesPerCategory. Enter your API key when searching.')
   }
   const companiesPerCategory = config.companiesPerCategory ?? 100
   // The retired total cap is accepted only for old files; new searches use the per-category target.
@@ -46,7 +46,7 @@ export function parseConfig(raw: string): ScoutConfig {
     interests: strings(config.interests, 'interests', true),
     roles: strings(config.roles, 'roles'),
     locations: strings(config.locations, 'locations'),
-    companyStage: text(config.companyStage, 'companyStage', '', 200),
+    jobInterests: strings(config.jobInterests, 'jobInterests'),
     notes: text(config.notes, 'notes'),
     companiesPerCategory
   }

@@ -3,7 +3,7 @@ export interface ScoutConfig {
   interests: string[]
   roles: string[]
   locations: string[]
-  companyStage: string
+  jobInterests: string[]
   notes: string
   companiesPerCategory: number
 }
@@ -45,6 +45,51 @@ export interface CompanyValue {
 
 export type CompanySort = 'value_desc' | 'value_asc' | 'match'
 
+export type DiscoveryMode = 'interest_areas' | 'top_ai_startups' | 'large_it_companies'
+
+export interface CompanyLibrary {
+  path: string
+  companies: Company[]
+  updatedAt: string | null
+}
+
+export interface JobCriteria {
+  roles: string[]
+  locations: string[]
+  jobInterests: string[]
+}
+
+export interface JobInterestMatch { interest: string; evidence: string }
+
+export interface Job {
+  company: string
+  title: string
+  location: string
+  description: string
+  url: string
+  interestMatches: JobInterestMatch[]
+  matchScore: number
+}
+
+export interface JobSearchOptions extends SearchOptions {
+  roles: string[]
+  locations: string[]
+  jobInterests?: string[]
+}
+
+export interface JobSearchResult {
+  jobs: Job[]
+  criteria: JobCriteria
+  searchedAt: string
+  model: string
+  companiesChecked: number
+  totalCompanies: number
+  incomplete: boolean
+  warning: string | null
+}
+
+export interface JobSearchProgress { result: JobSearchResult }
+
 export interface Source {
   title: string
   url: string
@@ -71,6 +116,7 @@ export interface SearchOptions {
   model: string
   webSearch: boolean
   companiesPerCategory?: number
+  discoveryMode?: DiscoveryMode
 }
 
 export type Reply<T> = { ok: true; data: T } | { ok: false; error: string; cancelled?: boolean }
@@ -81,9 +127,13 @@ export interface ScoutApi {
   saveExample(): Promise<Reply<ConfigDocument | null>>
   editConfig(): Promise<Reply<ConfigDraft>>
   saveConfig(request: ConfigSaveRequest): Promise<Reply<ConfigDocument>>
+  getLibrary(): Promise<Reply<CompanyLibrary>>
   search(options: SearchOptions): Promise<Reply<SearchResult>>
+  searchJobs(options: JobSearchOptions): Promise<Reply<JobSearchResult>>
   cancelSearch(): Promise<Reply<null>>
   openLink(url: string): Promise<Reply<null>>
   copyNames(names: string[]): Promise<Reply<null>>
   onProgress(listener: (progress: SearchProgress) => void): () => void
+  onLibraryChanged(listener: (library: CompanyLibrary) => void): () => void
+  onJobProgress(listener: (progress: JobSearchProgress) => void): () => void
 }

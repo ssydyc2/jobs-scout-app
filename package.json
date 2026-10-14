@@ -1,7 +1,7 @@
 {
   "name": "jobs-scout-app",
-  "version": "0.1.0",
-  "description": "A personal macOS company scout powered by GLM",
+  "version": "0.2.2",
+  "description": "A personal macOS company library and job scout powered by GLM",
   "private": true,
   "main": "out/main/index.js",
   "author": "Jobs Scout",

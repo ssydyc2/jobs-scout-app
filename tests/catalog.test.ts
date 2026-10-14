@@ -89,4 +89,28 @@ describe('category catalogs', () => {
     expect(result.incomplete).toBe(true)
     expect(result.warning).toContain('time limit')
   })
+  it('excludes saved aliases from both prompts and new results even if the model repeats them', async () => {
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(excluded(init?.body as string)).toContain('Saved Inc.')
+      return response([{ name: 'SAVED' }, { name: 'New Company' }])
+    })
+    const result = await searchCompanies({ ...config, interests: ['AI'] }, { ...options, companiesPerCategory: 2 }, new AbortController().signal, fetcher, undefined, undefined, undefined, ['Saved Inc.'])
+    expect(result.companies.map((company) => company.name)).toEqual(['New Company'])
+    expect(result.incomplete).toBe(true)
+  })
+  it.each(['top_ai_startups', 'large_it_companies'] as const)('searches the %s preset broadly without job constraints or changing preferences', async (discoveryMode) => {
+    const initial = parseConfig(JSON.stringify({ ...config, roles: ['AI Engineer'], locations: ['San Francisco'], jobInterests: ['RL'], companyStage: 'Seed', notes: 'Fintech only' }))
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => {
+      const batch = preferences(init?.body as string)
+      expect(batch.roles).toEqual([])
+      expect(batch.locations).toEqual([])
+      expect(batch.jobInterests).toEqual([])
+      expect(batch).not.toHaveProperty('companyStage')
+      expect(batch.interests).toEqual([discoveryMode === 'top_ai_startups' ? 'Top AI startups' : 'Large IT companies'])
+      return response([{ name: 'New Company' }])
+    })
+    await searchCompanies(initial, { ...options, companiesPerCategory: 1, discoveryMode }, new AbortController().signal, fetcher)
+    expect(initial.roles).toEqual(['AI Engineer'])
+    expect(initial.interests).toEqual(config.interests)
+  })
 })
