@@ -10,6 +10,15 @@ describe('preference files', () => {
   it('accepts a UTF-8 BOM and removes duplicate directions', () => {
     expect(parseConfig('\uFEFF{"interests":["AI"," AI "]}').interests).toEqual(['AI'])
   })
+  it('ignores the retired company-stage field in existing preference files', () => {
+    const config = parseConfig('{"interests":["AI"],"companyStage":"Seed to Series B"}')
+    expect(config).not.toHaveProperty('companyStage')
+  })
+  it('keeps job-specific interests optional and validates saved preferences', () => {
+    expect(parseConfig('{"interests":["AI"]}').jobInterests).toEqual([])
+    expect(parseConfig('{"interests":["AI"],"jobInterests":["RL","LLM infra"]}').jobInterests).toEqual(['RL', 'LLM infra'])
+    expect(() => parseConfig('{"interests":["AI"],"jobInterests":"RL"}')).toThrow('jobInterests')
+  })
   it.each(['', '[]', '{"interests":[]}', '{"interests":"AI"}', '{"interests":[123]}', '{"interests":[" "]}', '{"interests":["AI"],"roles":null}', '{"interests":["AI"],"companiesPerCategory":0}', '{"interests":["AI"],"companiesPerCategory":101}', '{"interests":["AI"],"companiesPerCategory":1.5}'])('rejects an invalid file: %s', (raw) => {
     expect(() => parseConfig(raw)).toThrow()
   })

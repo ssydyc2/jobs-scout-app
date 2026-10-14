@@ -6,10 +6,13 @@ import type { ConfigDocument, Reply } from '../shared/types'
 import { parseConfig, safeWebUrl } from '../shared/validation'
 import { ScoutError, searchCompanies, validateOptions } from './scout'
 import { ensureLocalPreferences, readPreferencesText, savePreferencesText } from './preferences'
+import { CompanyLibraryStore } from './library'
+import { searchJobs, validateJobOptions } from './jobs'
 
 let window: BrowserWindow | null = null
 let configPath: string
 let controller: AbortController | null = null
+let library: CompanyLibraryStore
 const rendererFile = join(__dirname, '../renderer/index.html')
 const devUrl = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
 const examplePath = app.isPackaged ? join(process.resourcesPath, 'scout.json') : join(app.getAppPath(), 'examples/scout.json')
@@ -35,6 +38,7 @@ function handle<T>(channel: string, action: (value: unknown) => Promise<T>) {
 }
 
 function installHandlers() {
+  handle('scout:get-library', () => library.read())
   handle('scout:get-config', () => readConfig())
   handle('scout:edit-config', () => readPreferencesText(configPath))
   handle('scout:save-config', async (value) => {
@@ -67,10 +71,38 @@ function installHandlers() {
     if (controller) throw new Error('A search is already in progress.')
     const current = new AbortController()
     controller = current
+    let saves: Promise<void> = Promise.resolve()
+    let saveError: unknown = null
     try {
       const document = await readConfig()
+      const saved = await library.read()
       return await searchCompanies(document.config, options, current.signal, undefined, undefined, undefined, (progress) => {
         if (window && !window.isDestroyed()) window.webContents.send('scout:progress', progress)
+        if (progress.result.companies.length) {
+          saves = saves.then(async () => {
+            try {
+              const updated = await library.add(progress.result.companies)
+              if (window && !window.isDestroyed()) window.webContents.send('scout:library-changed', updated)
+            } catch (error) { saveError = error }
+          })
+        }
+      }, saved.companies.map((company) => company.name))
+    } finally {
+      try {
+        await saves
+        if (saveError) throw saveError
+      } finally { controller = null }
+    }
+  })
+  handle('scout:search-jobs', async (input) => {
+    const options = validateJobOptions(input)
+    if (controller) throw new Error('A search is already in progress.')
+    const current = new AbortController()
+    controller = current
+    try {
+      const saved = await library.read()
+      return await searchJobs(saved.companies, options, current.signal, undefined, undefined, undefined, (progress) => {
+        if (window && !window.isDestroyed()) window.webContents.send('scout:job-progress', progress)
       })
     } finally { controller = null }
   })
@@ -111,6 +143,7 @@ const userDataOverride = app.commandLine.getSwitchValue('user-data-dir')
 if (userDataOverride) app.setPath('userData', userDataOverride)
 app.whenReady().then(async () => {
   configPath = await realpath(await ensureLocalPreferences(examplePath, app.getPath('userData')))
+  library = new CompanyLibraryStore(app.getPath('userData'))
   installHandlers()
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Jobs Scout', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { type: 'separator' }, { role: 'quit' }] },
